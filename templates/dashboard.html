@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Trading Bot{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='js/chart_utils.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <h1 class="h3 mb-0 text-gray-800">Trading Dashboard</h1>
+        <p class="mb-4">
+            Welcome back, {{ current_user.username }}!
+            {% if simulation_mode %}
+            <span class="badge bg-info ms-2">Simulation Mode</span>
+            <small class="d-block text-muted">Trading in simulation mode with virtual funds</small>
+            {% endif %}
+            
+            {% if settings and settings.trading_enabled %}
+            <span class="badge bg-success ms-2">Auto-Trading Active</span>
+            <small class="d-block text-muted">The bot will automatically place trades based on your risk settings</small>
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-lg-6 text-end">
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTradeModal">
+                <i class="fas fa-plus me-2"></i>New Trade
+            </button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#marketDataModal">
+                <i class="fas fa-search me-2"></i>Market Data
+            </button>
+            {% if settings and settings.trading_enabled %}
+            <a href="{{ url_for('settings') }}#trading" class="btn btn-outline-success">
+                <i class="fas fa-robot me-2"></i>Auto-Trading Settings
+            </a>
+            {% else %}
+            <a href="{{ url_for('settings') }}#trading" class="btn btn-outline-secondary">
+                <i class="fas fa-robot me-2"></i>Enable Auto-Trading
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Account Overview -->
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Account Balance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if account_balance %}
+                                {{ account_balance.balance }} {{ account_balance.currency }}
+                            {% else %}
+                                <span class="text-muted">Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Available Funds</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if account_balance %}
+                                {{ account_balance.available }} {{ account_balance.currency }}
+                            {% else %}
+                                <span class="text-muted">Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Open Positions</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ open_positions|length if open_positions else 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exchange-alt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Profit/Loss</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if account_balance %}
+                                <span class="{{ 'text-success' if account_balance.profit_loss > 0 else 'text-danger' if account_balance.profit_loss < 0 else '' }}">
+                                    {{ account_balance.profit_loss }} {{ account_balance.currency }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Open Positions and Recent Trades -->
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Open Positions</h6>
+                <a href="{{ url_for('trades') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if open_positions %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Direction</th>
+                                <th>Size</th>
+                                <th>Open Price</th>
+                                <th>P&L</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for position in open_positions %}
+                            <tr>
+                                <td>{{ position.symbol }}</td>
+                                <td>
+                                    <span class="badge {{ 'bg-success' if position.direction == 'BUY' else 'bg-danger' }}">
+                                        {{ position.direction }}
+                                    </span>
+                                </td>
+                                <td>{{ position.size }}</td>
+                                <td>{{ position.open_level }}</td>
+                                <td class="{{ 'text-success' if position.profit_loss > 0 else 'text-danger' }}">
+                                    {{ position.profit_loss }}
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('handle_close_trade', trade_id=position.position_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to close this position?')">
+                                            Close
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-exchange-alt fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No open positions</p>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newTradeModal">
+                        Place a Trade
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Trades</h6>
+            </div>
+            <div class="card-body">
+                {% if trades %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Direction</th>
+                                <th>Status</th>
+                                <th>P&L</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trade in trades %}
+                            <tr>
+                                <td>{{ trade.symbol }}</td>
+                                <td>
+                                    <span class="badge {{ 'bg-success' if trade.direction == 'BUY' else 'bg-danger' }}">
+                                        {{ trade.direction }}
+                                    </span>
+                                </td>
+                                <td>{{ trade.status }}</td>
+                                <td class="{{ 'text-success' if trade.pnl and trade.pnl > 0 else 'text-danger' if trade.pnl and trade.pnl < 0 else '' }}">
+                                    {% if trade.pnl %}
+                                        {{ trade.pnl|round(2) }}
+                                        ({{ trade.pnl_percentage|round(2) }}%)
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-line fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No recent trades</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Analysis and Market News -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Market Analysis</h6>
+            </div>
+            <div class="card-body">
+                {% if analyses %}
+                <div class="list-group">
+                    {% for analysis in analyses %}
+                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ analysis.symbol }}</h5>
+                            <small>{{ analysis.timestamp|datetime }}</small>
+                        </div>
+                        <p class="mb-1">
+                            Prediction: 
+                            <span class="badge {{ 'bg-success' if analysis.prediction == 'BUY' else 'bg-danger' if analysis.prediction == 'SELL' else 'bg-secondary' }}">
+                                {{ analysis.prediction }}
+                            </span>
+                            with {{ (analysis.confidence * 100)|round(1) }}% confidence
+                        </p>
+                        <small>Model: {{ analysis.model_used }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-brain fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No recent analyses</p>
+                    <a href="{{ url_for('analysis') }}" class="btn btn-sm btn-primary">
+                        Run Analysis
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Market News</h6>
+            </div>
+            <div class="card-body">
+                {% if news_items %}
+                <div class="list-group">
+                    {% for news in news_items %}
+                    <a href="{{ news.url }}" target="_blank" class="list-group-item list-group-item-action flex-column align-items-start">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ news.title }}</h5>
+                            <small>{{ news.published_at|datetime }}</small>
+                        </div>
+                        <p class="mb-1">{{ news.content|truncate(100) }}</p>
+                        <small>Source: {{ news.source }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-newspaper fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No recent news</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Trade Modal -->
+<div class="modal fade" id="newTradeModal" tabindex="-1" aria-labelledby="newTradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTradeModalLabel">Place New Trade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('handle_place_trade') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Symbol</label>
+                        <input type="text" class="form-control" id="symbol" name="symbol" required value="EURUSD">
+                        <div class="form-text">Example: EURUSD, BTCUSD, AAPL</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="direction" class="form-label">Direction</label>
+                        <select class="form-select" id="direction" name="direction" required>
+                            <option value="BUY">BUY</option>
+                            <option value="SELL">SELL</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" required value="0.1" step="0.01" min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="take_profit" class="form-label">Take Profit (optional)</label>
+                        <input type="number" class="form-control" id="take_profit" name="take_profit" step="0.00001">
+                    </div>
+                    <div class="mb-3">
+                        <label for="stop_loss" class="form-label">Stop Loss (optional)</label>
+                        <input type="number" class="form-control" id="stop_loss" name="stop_loss" step="0.00001">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Place Trade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Market Data Modal -->
+<div class="modal fade" id="marketDataModal" tabindex="-1" aria-labelledby="marketDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="marketDataModalLabel">Market Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text">Symbol</span>
+                            <input type="text" class="form-control" id="marketDataSymbol" value="EURUSD">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text">Timeframe</span>
+                            <select class="form-select" id="marketDataTimeframe">
+                                <option value="1m">1 Minute</option>
+                                <option value="5m">5 Minutes</option>
+                                <option value="15m">15 Minutes</option>
+                                <option value="1h" selected>1 Hour</option>
+                                <option value="4h">4 Hours</option>
+                                <option value="1d">Daily</option>
+                            </select>
+                            <button class="btn btn-primary" id="fetchMarketData">Fetch</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <canvas id="marketDataChart" style="width: 100%; height: 300px;"></canvas>
+                </div>
+                <div id="technicalIndicators" class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header py-2">
+                                <h6 class="m-0 font-weight-bold text-primary">Moving Averages</h6>
+                            </div>
+                            <div class="card-body py-2 px-3" id="maIndicators">
+                                <p class="mb-0 text-muted">Fetch data to view indicators</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header py-2">
+                                <h6 class="m-0 font-weight-bold text-primary">Oscillators</h6>
+                            </div>
+                            <div class="card-body py-2 px-3" id="oscillatorIndicators">
+                                <p class="mb-0 text-muted">Fetch data to view indicators</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Market Data Chart initialization
+        let marketDataChart = null;
+        
+        // Fetch market data button
+        document.getElementById('fetchMarketData').addEventListener('click', function() {
+            const symbol = document.getElementById('marketDataSymbol').value;
+            const timeframe = document.getElementById('marketDataTimeframe').value;
+            
+            // Show loading state
+            document.getElementById('maIndicators').innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin"></i></p>';
+            document.getElementById('oscillatorIndicators').innerHTML = '<p class="text-center"><i class="fas fa-spinner fa-spin"></i></p>';
+            
+            // Fetch market data
+            fetch(`/api/market_data/${symbol}/${timeframe}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    // Update chart
+                    updateMarketDataChart(data);
+                    
+                    // Fetch technical analysis
+                    fetch(`/api/technical_analysis/${symbol}/${timeframe}`)
+                        .then(response => response.json())
+                        .then(analysis => {
+                            if (analysis.error) {
+                                alert('Error: ' + analysis.error);
+                                return;
+                            }
+                            
+                            // Update technical indicators
+                            updateTechnicalIndicators(analysis);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching technical analysis:', error);
+                            alert('Error fetching technical analysis. Please try again.');
+                        });
+                })
+                .catch(error => {
+                    console.error('Error fetching market data:', error);
+                    alert('Error fetching market data. Please try again.');
+                });
+        });
+        
+        // Update market data chart
+        function updateMarketDataChart(data) {
+            const ctx = document.getElementById('marketDataChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (marketDataChart) {
+                marketDataChart.destroy();
+            }
+            
+            // Format data for chart
+            const labels = data.map(item => {
+                const date = new Date(item.timestamp);
+                return date.toLocaleTimeString();
+            });
+            
+            const prices = data.map(item => ({
+                o: item.open,
+                h: item.high,
+                l: item.low,
+                c: item.close,
+            }));
+            
+            // Create new chart
+            marketDataChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price',
+                        data: prices
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Price'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update technical indicators
+        function updateTechnicalIndicators(analysis) {
+            // Moving Averages
+            let maHtml = '';
+            if (analysis.sma && analysis.sma.sma_20 && analysis.sma.sma_50) {
+                maHtml += `<div class="mb-1">SMA 20: <span class="fw-bold">${analysis.sma.sma_20}</span></div>`;
+                maHtml += `<div class="mb-1">SMA 50: <span class="fw-bold">${analysis.sma.sma_50}</span></div>`;
+                
+                if (analysis.sma.sma_20 > analysis.sma.sma_50) {
+                    maHtml += `<div class="text-success">Trend: <span class="fw-bold">Bullish</span></div>`;
+                } else {
+                    maHtml += `<div class="text-danger">Trend: <span class="fw-bold">Bearish</span></div>`;
+                }
+            } else {
+                maHtml = '<p class="mb-0 text-muted">No moving average data available</p>';
+            }
+            
+            document.getElementById('maIndicators').innerHTML = maHtml;
+            
+            // Oscillators
+            let oscHtml = '';
+            if (analysis.rsi !== null) {
+                oscHtml += `<div class="mb-1">RSI: <span class="fw-bold">${analysis.rsi.toFixed(2)}</span>`;
+                
+                if (analysis.rsi < 30) {
+                    oscHtml += ` <span class="badge bg-success">Oversold</span>`;
+                } else if (analysis.rsi > 70) {
+                    oscHtml += ` <span class="badge bg-danger">Overbought</span>`;
+                } else {
+                    oscHtml += ` <span class="badge bg-secondary">Neutral</span>`;
+                }
+                
+                oscHtml += `</div>`;
+            }
+            
+            if (analysis.macd && analysis.macd.macd !== null) {
+                oscHtml += `<div class="mb-1">MACD: <span class="fw-bold">${analysis.macd.macd.toFixed(4)}</span></div>`;
+                oscHtml += `<div>Signal: <span class="fw-bold">${analysis.macd.signal.toFixed(4)}</span></div>`;
+            }
+            
+            if (!oscHtml) {
+                oscHtml = '<p class="mb-0 text-muted">No oscillator data available</p>';
+            }
+            
+            document.getElementById('oscillatorIndicators').innerHTML = oscHtml;
+        }
+    });
+</script>
+{% endblock %}
