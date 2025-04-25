@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Trades - Trading Bot{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-lg-6">
+        <h1 class="h3 mb-0 text-gray-800">Trade History</h1>
+        <p class="mb-0">View and manage your trading activities.</p>
+    </div>
+    <div class="col-lg-6 text-end">
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTradeModal">
+                <i class="fas fa-plus me-2"></i>New Trade
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Trades</h6>
+        <div class="btn-group">
+            <a href="{{ url_for('trades', status='all') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'all' else 'btn-outline-secondary' }}">All</a>
+            <a href="{{ url_for('trades', status='open') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'open' else 'btn-outline-secondary' }}">Open</a>
+            <a href="{{ url_for('trades', status='closed') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'closed' else 'btn-outline-secondary' }}">Closed</a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if trades.items %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Direction</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        <th>P&L</th>
+                        <th>Entry Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades['items'] %}
+                    <tr>
+                        <td>{{ trade.symbol }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if trade.direction == 'BUY' else 'bg-danger' }}">
+                                {{ trade.direction }}
+                            </span>
+                        </td>
+                        <td>{{ trade.entry_price }}</td>
+                        <td>{{ trade.exit_price if trade.exit_price else '-' }}</td>
+                        <td>{{ trade.quantity }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if trade.status == 'CLOSED' else 'bg-primary' if trade.status == 'OPEN' else 'bg-secondary' }}">
+                                {{ trade.status }}
+                            </span>
+                        </td>
+                        <td class="{{ 'text-success' if trade.pnl and trade.pnl > 0 else 'text-danger' if trade.pnl and trade.pnl < 0 else '' }}">
+                            {% if trade.pnl %}
+                                {{ trade.pnl|round(2) }}
+                                ({{ trade.pnl_percentage|round(2) }}%)
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ trade.entry_time }}</td>
+                        <td>
+                            {% if trade.status == 'OPEN' %}
+                            <form method="POST" action="{{ url_for('handle_close_trade', trade_id=trade.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to close this trade?')">
+                                    Close
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#tradeDetailsModal" data-trade-id="{{ trade.id }}">
+                                Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Trades pagination">
+            <ul class="pagination justify-content-center">
+                {% if trades['has_prev'] %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('trades', page=trades['page']-1, status=status_filter) }}">Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Previous</span>
+                </li>
+                {% endif %}
+
+                {% for page_num in range(1, trades['pages'] + 1) %}
+                    {% if page_num %}
+                        {% if page_num == trades['page'] %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('trades', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if trades['has_next'] %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('trades', page=trades['page']+1, status=status_filter) }}">Next</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Next</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-chart-line fa-4x mb-3 text-muted"></i>
+            <p class="text-muted">No trades found</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTradeModal">
+                Place Your First Trade
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- New Trade Modal -->
+<div class="modal fade" id="newTradeModal" tabindex="-1" aria-labelledby="newTradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTradeModalLabel">Place New Trade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('handle_place_trade') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Symbol</label>
+                        <input type="text" class="form-control" id="symbol" name="symbol" required value="EURUSD">
+                        <div class="form-text">Example: EURUSD, BTCUSD, AAPL</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="direction" class="form-label">Direction</label>
+                        <select class="form-select" id="direction" name="direction" required>
+                            <option value="BUY">BUY</option>
+                            <option value="SELL">SELL</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" required value="0.1" step="0.01" min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="take_profit" class="form-label">Take Profit (optional)</label>
+                        <input type="number" class="form-control" id="take_profit" name="take_profit" step="0.00001">
+                    </div>
+                    <div class="mb-3">
+                        <label for="stop_loss" class="form-label">Stop Loss (optional)</label>
+                        <input type="number" class="form-control" id="stop_loss" name="stop_loss" step="0.00001">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Place Trade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Trade Details Modal -->
+<div class="modal fade" id="tradeDetailsModal" tabindex="-1" aria-labelledby="tradeDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tradeDetailsModalLabel">Trade Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div id="tradeDetails" class="d-none">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <h6 class="m-0 font-weight-bold text-primary">Trade Information</h6>
+                                </div>
+                                <div class="card-body p-3">
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <th scope="row">Symbol:</th>
+                                            <td id="detail-symbol"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Direction:</th>
+                                            <td id="detail-direction"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Status:</th>
+                                            <td id="detail-status"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Quantity:</th>
+                                            <td id="detail-quantity"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Entry Price:</th>
+                                            <td id="detail-entry-price"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Exit Price:</th>
+                                            <td id="detail-exit-price"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <h6 class="m-0 font-weight-bold text-primary">Risk Management</h6>
+                                </div>
+                                <div class="card-body p-3">
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <th scope="row">Take Profit:</th>
+                                            <td id="detail-take-profit"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Stop Loss:</th>
+                                            <td id="detail-stop-loss"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">P&L:</th>
+                                            <td id="detail-pnl"></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">P&L %:</th>
+                                            <td id="detail-pnl-percentage"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header py-2">
+                            <h6 class="m-0 font-weight-bold text-primary">Additional Information</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th scope="row">Entry Time:</th>
+                                    <td id="detail-entry-time"></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Exit Time:</th>
+                                    <td id="detail-exit-time"></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Strategy:</th>
+                                    <td id="detail-strategy"></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">AI Confidence:</th>
+                                    <td id="detail-ai-confidence"></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Notes:</th>
+                                    <td id="detail-notes"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Trade Details Modal
+        const tradeDetailsModal = document.getElementById('tradeDetailsModal');
+        
+        tradeDetailsModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const tradeId = button.getAttribute('data-trade-id');
+            
+            // Show loading indicator
+            document.querySelector('#tradeDetailsModal .spinner-border').classList.remove('d-none');
+            document.getElementById('tradeDetails').classList.add('d-none');
+            
+            // Fetch trade details
+            // In a real application, this would be an AJAX call to get the trade details
+            // For this example, we'll use the trade data from the trades list
+            
+            // Simulating an API call with setTimeout
+            setTimeout(() => {
+                // Find the trade in the trades list
+                // In a real application, you would fetch this data from the server
+                const trades = {{ trades['items']|tojson }};
+                const trade = trades.find(t => t.id === parseInt(tradeId));
+                
+                if (trade) {
+                    // Populate the modal with trade details
+                    document.getElementById('detail-symbol').textContent = trade.symbol;
+                    document.getElementById('detail-direction').textContent = trade.direction;
+                    document.getElementById('detail-status').textContent = trade.status;
+                    document.getElementById('detail-quantity').textContent = trade.quantity;
+                    document.getElementById('detail-entry-price').textContent = trade.entry_price;
+                    document.getElementById('detail-exit-price').textContent = trade.exit_price || '-';
+                    document.getElementById('detail-take-profit').textContent = trade.take_profit || '-';
+                    document.getElementById('detail-stop-loss').textContent = trade.stop_loss || '-';
+                    document.getElementById('detail-pnl').textContent = trade.pnl ? trade.pnl.toFixed(2) : '-';
+                    document.getElementById('detail-pnl-percentage').textContent = trade.pnl_percentage ? trade.pnl_percentage.toFixed(2) + '%' : '-';
+                    document.getElementById('detail-entry-time').textContent = new Date(trade.entry_time).toLocaleString();
+                    document.getElementById('detail-exit-time').textContent = trade.exit_time ? new Date(trade.exit_time).toLocaleString() : '-';
+                    document.getElementById('detail-strategy').textContent = trade.strategy_used || '-';
+                    document.getElementById('detail-ai-confidence').textContent = trade.ai_confidence ? (trade.ai_confidence * 100).toFixed(1) + '%' : '-';
+                    document.getElementById('detail-notes').textContent = trade.notes || '-';
+                    
+                    // Show trade details
+                    document.querySelector('#tradeDetailsModal .spinner-border').classList.add('d-none');
+                    document.getElementById('tradeDetails').classList.remove('d-none');
+                }
+            }, 500);
+        });
+    });
+</script>
+{% endblock %}
