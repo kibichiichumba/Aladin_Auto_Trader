@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Trading Bot{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-header">
+                <h3 class="text-center font-weight-light my-2">Create Account</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" required placeholder="Choose a username">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email" required placeholder="Enter your email">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required placeholder="Enter a password">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Confirm password">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                        <label class="form-check-label" for="terms">
+                            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> and <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a>
+                        </label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Create Account</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center py-3">
+                <div class="small">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms of Service Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">Terms of Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>By using the Trading Bot, you agree to the following terms:</p>
+                <ul>
+                    <li>This software is provided as-is without any warranty.</li>
+                    <li>You acknowledge that trading involves risk and potential loss of capital.</li>
+                    <li>The bot's performance is not guaranteed, and past results do not guarantee future returns.</li>
+                    <li>You are solely responsible for any trading decisions made using this tool.</li>
+                    <li>You agree to comply with all applicable laws and regulations in your jurisdiction.</li>
+                    <li>We are not responsible for any financial losses incurred while using this software.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="privacyModalLabel">Privacy Policy</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Your privacy is important to us. This policy outlines how we collect and use your data:</p>
+                <ul>
+                    <li>We collect your email and credentials to provide the service.</li>
+                    <li>Your Capital.com API keys are encrypted and stored securely.</li>
+                    <li>We do not share your personal information with third parties.</li>
+                    <li>We may collect usage statistics to improve the service.</li>
+                    <li>You can request deletion of your data at any time.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
