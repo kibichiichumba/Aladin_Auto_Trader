@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+
+{% block title %}Market Analysis - Trading Bot{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='js/chart_utils.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-lg-6">
+        <h1 class="h3 mb-0 text-gray-800">Market Analysis</h1>
+        <p class="mb-0">Technical and AI-powered analysis for markets.</p>
+    </div>
+    <div class="col-lg-6">
+        <form id="analysisForm" class="row g-3">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text">Symbol</span>
+                    <input type="text" class="form-control" id="symbol" name="symbol" value="{{ symbol or 'EURUSD' }}">
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text">Timeframe</span>
+                    <select class="form-select" id="timeframe" name="timeframe">
+                        <option value="1m" {% if timeframe == '1m' %}selected{% endif %}>1 Minute</option>
+                        <option value="5m" {% if timeframe == '5m' %}selected{% endif %}>5 Minutes</option>
+                        <option value="15m" {% if timeframe == '15m' %}selected{% endif %}>15 Minutes</option>
+                        <option value="1h" {% if timeframe == '1h' or not timeframe %}selected{% endif %}>1 Hour</option>
+                        <option value="4h" {% if timeframe == '4h' %}selected{% endif %}>4 Hours</option>
+                        <option value="1d" {% if timeframe == '1d' %}selected{% endif %}>Daily</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Analyze</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Price Chart -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Price Chart: {{ symbol }}</h6>
+            </div>
+            <div class="card-body">
+                {% if market_data %}
+                <div style="height: 400px;">
+                    <canvas id="priceChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-line fa-4x mb-3 text-muted"></i>
+                    <p class="text-muted">No market data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Signal Summary -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Signal Summary</h6>
+            </div>
+            <div class="card-body">
+                {% if technical_analysis %}
+                <div class="text-center mb-4">
+                    <div class="display-4 mb-2">
+                        {% if technical_analysis.signal.direction == 'BUY' %}
+                        <span class="text-success">BUY</span>
+                        {% elif technical_analysis.signal.direction == 'SELL' %}
+                        <span class="text-danger">SELL</span>
+                        {% else %}
+                        <span class="text-secondary">NEUTRAL</span>
+                        {% endif %}
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-{{ 'success' if technical_analysis.signal.direction == 'BUY' else 'danger' if technical_analysis.signal.direction == 'SELL' else 'secondary' }}" 
+                             role="progressbar" 
+                             style="width: {{ technical_analysis.signal.strength * 100 }}%" 
+                             aria-valuenow="{{ technical_analysis.signal.strength * 100 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ (technical_analysis.signal.strength * 100)|round(1) }}%
+                        </div>
+                    </div>
+                    <p class="text-muted">Signal Strength</p>
+                </div>
+
+                {% if ai_predictions %}
+                <div class="alert alert-{{ 'success' if ai_predictions.prediction == 'BUY' else 'danger' if ai_predictions.prediction == 'SELL' else 'secondary' }} d-flex align-items-center" role="alert">
+                    <i class="fas fa-robot me-2"></i>
+                    <div>
+                        <strong>AI Prediction:</strong> {{ ai_predictions.prediction }} ({{ (ai_predictions.confidence * 100)|round(1) }}% confidence)
+                    </div>
+                </div>
+                {% endif %}
+
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <th scope="row">RSI (14)</th>
+                            <td>
+                                {{ technical_analysis.rsi|round(2) }}
+                                {% if technical_analysis.rsi < 30 %}
+                                <span class="badge bg-success">Oversold</span>
+                                {% elif technical_analysis.rsi > 70 %}
+                                <span class="badge bg-danger">Overbought</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Neutral</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">MACD</th>
+                            <td>
+                                {{ technical_analysis.macd.macd|round(4) }}
+                                {% if technical_analysis.macd.macd > technical_analysis.macd.signal %}
+                                <span class="badge bg-success">Bullish</span>
+                                {% else %}
+                                <span class="badge bg-danger">Bearish</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">SMA Trend</th>
+                            <td>
+                                {% if technical_analysis.sma.sma_20 > technical_analysis.sma.sma_50 %}
+                                <span class="badge bg-success">Bullish</span>
+                                {% else %}
+                                <span class="badge bg-danger">Bearish</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Current Price</th>
+                            <td>
+                                {% if market_data %}
+                                {{ market_data[-1].close }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-bar fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No technical analysis available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Technical Indicators -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Technical Indicators</h6>
+            </div>
+            <div class="card-body">
+                {% if technical_analysis %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Moving Averages</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th scope="row">SMA 20</th>
+                                    <td>{{ technical_analysis.sma.sma_20|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">SMA 50</th>
+                                    <td>{{ technical_analysis.sma.sma_50|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">EMA 12</th>
+                                    <td>{{ technical_analysis.ema.ema_12|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">EMA 26</th>
+                                    <td>{{ technical_analysis.ema.ema_26|round(5) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Oscillators</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th scope="row">RSI (14)</th>
+                                    <td>{{ technical_analysis.rsi|round(2) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">MACD</th>
+                                    <td>{{ technical_analysis.macd.macd|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">MACD Signal</th>
+                                    <td>{{ technical_analysis.macd.signal|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">MACD Histogram</th>
+                                    <td>{{ technical_analysis.macd.histogram|round(5) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">Bollinger Bands</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th scope="row">Upper Band</th>
+                                    <td>{{ technical_analysis.bollinger_bands.upper|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Middle Band (SMA 20)</th>
+                                    <td>{{ technical_analysis.bollinger_bands.middle|round(5) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Lower Band</th>
+                                    <td>{{ technical_analysis.bollinger_bands.lower|round(5) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-bar fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No technical indicators available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Analysis & News -->
+    <div class="col-lg-6">
+        {% if ai_predictions %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">AI Analysis</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>
+                        Prediction: 
+                        <span class="badge bg-{{ 'success' if ai_predictions.prediction == 'BUY' else 'danger' if ai_predictions.prediction == 'SELL' else 'secondary' }}">
+                            {{ ai_predictions.prediction }}
+                        </span>
+                    </h5>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-{{ 'success' if ai_predictions.prediction == 'BUY' else 'danger' if ai_predictions.prediction == 'SELL' else 'secondary' }}" 
+                             role="progressbar" 
+                             style="width: {{ ai_predictions.confidence * 100 }}%" 
+                             aria-valuenow="{{ ai_predictions.confidence * 100 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ (ai_predictions.confidence * 100)|round(1) }}%
+                        </div>
+                    </div>
+                    <p class="text-muted">Confidence Level</p>
+                </div>
+                
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <th scope="row">Model</th>
+                            <td>{{ ai_predictions.model_used }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Technical Score</th>
+                            <td>
+                                {{ ai_predictions.technical_score|round(2) }}
+                                <span class="badge bg-{{ 'success' if ai_predictions.technical_score > 0 else 'danger' if ai_predictions.technical_score < 0 else 'secondary' }}">
+                                    {{ 'Bullish' if ai_predictions.technical_score > 0 else 'Bearish' if ai_predictions.technical_score < 0 else 'Neutral' }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Sentiment Score</th>
+                            <td>
+                                {{ ai_predictions.sentiment_score|round(2) }}
+                                <span class="badge bg-{{ 'success' if ai_predictions.sentiment_score > 0 else 'danger' if ai_predictions.sentiment_score < 0 else 'secondary' }}">
+                                    {{ 'Positive' if ai_predictions.sentiment_score > 0 else 'Negative' if ai_predictions.sentiment_score < 0 else 'Neutral' }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Timestamp</th>
+                            <td>{{ ai_predictions.timestamp }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Related News</h6>
+            </div>
+            <div class="card-body">
+                {% if news_items %}
+                <div class="list-group">
+                    {% for news in news_items %}
+                    <a href="{{ news.url }}" target="_blank" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ news.title }}</h6>
+                            <small>{{ news.published_at|datetime }}</small>
+                        </div>
+                        <small class="mb-1">Source: {{ news.source }}</small>
+                        {% if news.sentiment_score %}
+                        <span class="badge bg-{{ 'success' if news.sentiment_score > 0.2 else 'danger' if news.sentiment_score < -0.2 else 'secondary' }} float-end">
+                            {{ 'Positive' if news.sentiment_score > 0.2 else 'Negative' if news.sentiment_score < -0.2 else 'Neutral' }}
+                        </span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-newspaper fa-3x mb-3 text-muted"></i>
+                    <p class="text-muted">No relevant news items available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trade Action Card -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Trade Actions</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="d-grid gap-2 d-md-block">
+                    <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#buyTradeModal">
+                        <i class="fas fa-arrow-up me-1"></i> BUY {{ symbol }}
+                    </button>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#sellTradeModal">
+                        <i class="fas fa-arrow-down me-1"></i> SELL {{ symbol }}
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Risk Notice:</strong> Always confirm your analysis and consider your risk tolerance before trading.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Buy Trade Modal -->
+<div class="modal fade" id="buyTradeModal" tabindex="-1" aria-labelledby="buyTradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="buyTradeModalLabel">Buy {{ symbol }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('handle_place_trade') }}">
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        You are about to place a BUY order for {{ symbol }}
+                    </div>
+                    
+                    <input type="hidden" name="symbol" value="{{ symbol }}">
+                    <input type="hidden" name="direction" value="BUY">
+                    
+                    <div class="mb-3">
+                        <label for="buy_quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="buy_quantity" name="quantity" required value="0.1" step="0.01" min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="buy_take_profit" class="form-label">Take Profit</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="buy_take_profit" name="take_profit" step="0.00001" 
+                                  {% if market_data %}
+                                  value="{{ (market_data[-1].close * 1.005)|round(5) }}"
+                                  {% endif %}>
+                            <span class="input-group-text">+0.5%</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="buy_stop_loss" class="form-label">Stop Loss</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="buy_stop_loss" name="stop_loss" step="0.00001"
+                                  {% if market_data %}
+                                  value="{{ (market_data[-1].close * 0.997)|round(5) }}"
+                                  {% endif %}>
+                            <span class="input-group-text">-0.3%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Place Buy Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Sell Trade Modal -->
+<div class="modal fade" id="sellTradeModal" tabindex="-1" aria-labelledby="sellTradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sellTradeModalLabel">Sell {{ symbol }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('handle_place_trade') }}">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        You are about to place a SELL order for {{ symbol }}
+                    </div>
+                    
+                    <input type="hidden" name="symbol" value="{{ symbol }}">
+                    <input type="hidden" name="direction" value="SELL">
+                    
+                    <div class="mb-3">
+                        <label for="sell_quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="sell_quantity" name="quantity" required value="0.1" step="0.01" min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sell_take_profit" class="form-label">Take Profit</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="sell_take_profit" name="take_profit" step="0.00001" 
+                                  {% if market_data %}
+                                  value="{{ (market_data[-1].close * 0.995)|round(5) }}"
+                                  {% endif %}>
+                            <span class="input-group-text">-0.5%</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sell_stop_loss" class="form-label">Stop Loss</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="sell_stop_loss" name="stop_loss" step="0.00001"
+                                  {% if market_data %}
+                                  value="{{ (market_data[-1].close * 1.003)|round(5) }}"
+                                  {% endif %}>
+                            <span class="input-group-text">+0.3%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Place Sell Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle analysis form submission
+        document.getElementById('analysisForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const symbol = document.getElementById('symbol').value;
+            const timeframe = document.getElementById('timeframe').value;
+            
+            window.location.href = `{{ url_for('analysis') }}?symbol=${symbol}&timeframe=${timeframe}`;
+        });
+        
+        {% if market_data %}
+        // Create price chart
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        
+        // Format data for chart
+        const labels = {{ market_data|map(attribute='timestamp')|list|tojson }};
+        const closePrices = {{ market_data|map(attribute='close')|list|tojson }};
+        
+        {% if technical_analysis %}
+        const sma20 = new Array(labels.length).fill(null);
+        const sma50 = new Array(labels.length).fill(null);
+        
+        // Fill the last values with the SMA values
+        const lastIndex = labels.length - 1;
+        sma20[lastIndex] = {{ technical_analysis.sma.sma_20 }};
+        sma50[lastIndex] = {{ technical_analysis.sma.sma_50 }};
+        
+        // Create chart
+        const priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.map(timestamp => {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString();
+                }),
+                datasets: [
+                    {
+                        label: 'Price',
+                        data: closePrices,
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
+                        borderWidth: 2,
+                        pointRadius: 1,
+                        pointHoverRadius: 3,
+                        fill: false
+                    },
+                    {
+                        label: 'SMA 20',
+                        data: sma20,
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: 'SMA 50',
+                        data: sma50,
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Price'
+                        }
+                    }
+                }
+            }
+        });
+        {% else %}
+        // Create chart without technical indicators
+        const priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.map(timestamp => {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString();
+                }),
+                datasets: [
+                    {
+                        label: 'Price',
+                        data: closePrices,
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
+                        borderWidth: 2,
+                        pointRadius: 1,
+                        pointHoverRadius: 3,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Price'
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+        {% endif %}
+    });
+</script>
+{% endblock %}
