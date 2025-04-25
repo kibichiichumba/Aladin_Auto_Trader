@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Trading Bot - AI-Enhanced Trading{% endblock %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-lg-6">
+        <div class="text-center text-lg-start mb-5">
+            <h1 class="display-4 fw-bold mb-4">AI-Enhanced Trading Bot</h1>
+            <p class="lead mb-4">
+                Automate your trading on Capital.com with our powerful AI-driven bot. 
+                Advanced technical analysis, sentiment analysis, and 24/7 mobile monitoring.
+            </p>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-4 me-md-2">Get Started</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-secondary btn-lg px-4">Login</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-lg border-0 rounded-lg mb-5">
+            <div class="card-body p-4">
+                <h2 class="text-center mb-4">Key Features</h2>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-robot fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>Auto API Integration</h5>
+                                <p class="small">Automatically fetches your API key from Capital.com</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-chart-line fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>Technical Analysis</h5>
+                                <p class="small">Advanced indicators and real-time signal generation</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-brain fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>AI-Powered Trading</h5>
+                                <p class="small">Uses machine learning for market predictions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-shield-alt fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>Risk Management</h5>
+                                <p class="small">Smart SL/TP and capital protection controls</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-mobile-alt fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>Mobile Dashboard</h5>
+                                <p class="small">Monitor and control trades from your phone</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-bell fa-2x text-primary me-3 mt-1"></i>
+                            <div>
+                                <h5>Instant Notifications</h5>
+                                <p class="small">Get alerts via Telegram, Discord or email</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body p-4">
+                <h2 class="text-center mb-4">Supported Platforms</h2>
+                <div class="row text-center">
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-desktop fa-3x mb-3 text-primary"></i>
+                            <h5>Capital.com</h5>
+                            <p class="small">Automatic API integration with both demo and live trading environments</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-chart-area fa-3x mb-3 text-primary"></i>
+                            <h5>TradingView</h5>
+                            <p class="small">Webhook integration for alert automation and strategy execution</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-chart-bar fa-3x mb-3 text-primary"></i>
+                            <h5>MT4/MT5</h5>
+                            <p class="small">Bridge integration for MetaTrader platforms and expert advisors</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
