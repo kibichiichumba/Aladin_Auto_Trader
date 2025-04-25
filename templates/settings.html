@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Trading Bot{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="h3 mb-4 text-gray-800">Settings</h1>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <ul class="nav nav-tabs card-header-tabs" id="settingsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="api-tab" data-bs-toggle="tab" data-bs-target="#api" type="button" role="tab" aria-controls="api" aria-selected="true">API Configuration</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="trading-tab" data-bs-toggle="tab" data-bs-target="#trading" type="button" role="tab" aria-controls="trading" aria-selected="false">Trading Settings</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab" aria-controls="notifications" aria-selected="false">Notifications</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="integrations-tab" data-bs-toggle="tab" data-bs-target="#integrations" type="button" role="tab" aria-controls="integrations" aria-selected="false">Integrations</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings') }}">
+                    <div class="tab-content" id="settingsTabsContent">
+                        <!-- API Configuration Tab -->
+                        <div class="tab-pane fade show active" id="api" role="tabpanel" aria-labelledby="api-tab">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>How to get your Capital.com API key:</strong>
+                                <ol class="mt-2 mb-0">
+                                    <li>Log in to your Capital.com account on their website</li>
+                                    <li>Go to your Account or Profile section</li>
+                                    <li>Find the API Management or Developer section</li>
+                                    <li>Generate a new API key if you don't have one already</li>
+                                    <li>Copy the key and paste it below in the "Enter API Key Manually" field</li>
+                                </ol>
+                                <p class="mt-2 mb-0"><small>Note: Automated API key extraction is currently unavailable. Please enter your key manually.</small></p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="capital_email" class="form-label">Capital.com Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="capital_email" name="capital_email" value="{{ current_user.capital_email or '' }}" placeholder="Your Capital.com email">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="capital_password" class="form-label">Capital.com Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="capital_password" name="capital_password" placeholder="Your Capital.com password">
+                                </div>
+                                <div class="form-text text-muted">Password is securely stored and only used for API authentication.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="is_demo_account" name="is_demo_account" {% if current_user.is_demo_account %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_demo_account">
+                                        Use demo account
+                                    </label>
+                                </div>
+                                <div class="form-text text-muted">Uncheck to use live trading.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="use_simulation_mode" name="use_simulation_mode" {% if current_user.use_simulation_mode %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold text-info" for="use_simulation_mode">
+                                        Use simulation mode
+                                    </label>
+                                </div>
+                                <div class="form-text text-muted">Enable this if you're having issues with the Capital.com API. This will simulate trading functionality without requiring a valid API key.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="api_key" class="form-label">Current API Key</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                    <input type="password" class="form-control" id="api_key" value="{{ current_user.api_key or '' }}" disabled>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleApiKey">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted">Your current API key from Capital.com</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="manual_api_key" class="form-label">Enter API Key Manually</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                    <input type="password" class="form-control" id="manual_api_key" name="manual_api_key" placeholder="Enter your Capital.com API key">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleManualApiKey">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted">You can manually enter your API key from Capital.com. You need to log in to Capital.com, go to your profile, and find the API section to generate a key.</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Trading Settings Tab -->
+                        <div class="tab-pane fade" id="trading" role="tabpanel" aria-labelledby="trading-tab">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="trading_enabled" name="trading_enabled" {% if settings and settings.trading_enabled %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold text-primary" for="trading_enabled">
+                                        Enable Automated Trading
+                                    </label>
+                                </div>
+                                <div class="form-text">
+                                    <p class="mb-1">When enabled, the bot will automatically:</p>
+                                    <ul class="mb-2">
+                                        <li>Analyze markets hourly for trading opportunities</li>
+                                        <li>Place trades based on technical indicators and AI predictions (if AI analysis is enabled)</li>
+                                        <li>Set stop loss and take profit levels automatically</li>
+                                        <li>Manage risk according to your settings below</li>
+                                    </ul>
+                                    <div class="alert alert-info p-2">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <small>The bot trades fully automatically with risk management. You can safely leave it running 24/7.</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="risk_per_trade" class="form-label">Risk Per Trade (%)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-percent"></i></span>
+                                    <input type="number" class="form-control" id="risk_per_trade" name="risk_per_trade" value="{{ settings.risk_per_trade if settings else 2.0 }}" min="0.1" max="10" step="0.1">
+                                </div>
+                                <div class="form-text text-muted">Percentage of your account balance to risk on each trade.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="max_daily_loss" class="form-label">Maximum Daily Loss (%)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-percent"></i></span>
+                                    <input type="number" class="form-control" id="max_daily_loss" name="max_daily_loss" value="{{ settings.max_daily_loss if settings else 5.0 }}" min="0.1" max="20" step="0.1">
+                                </div>
+                                <div class="form-text text-muted">Trading will stop for the day if this loss percentage is reached.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="use_ai_analysis" name="use_ai_analysis" {% if settings and settings.use_ai_analysis %}checked{% endif %}>
+                                    <label class="form-check-label" for="use_ai_analysis">
+                                        Use AI Analysis
+                                    </label>
+                                </div>
+                                <div class="form-text text-muted">Enable AI-powered market analysis and predictions.</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notifications Tab -->
+                        <div class="tab-pane fade" id="notifications" role="tabpanel" aria-labelledby="notifications-tab">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="enable_notifications" name="enable_notifications" {% if settings and settings.enable_notifications %}checked{% endif %}>
+                                    <label class="form-check-label" for="enable_notifications">
+                                        Enable Notifications
+                                    </label>
+                                </div>
+                                <div class="form-text text-muted">Receive notifications about trades and important events.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="telegram_chat_id" class="form-label">Telegram Chat ID</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fab fa-telegram"></i></span>
+                                    <input type="text" class="form-control" id="telegram_chat_id" name="telegram_chat_id" value="{{ settings.telegram_chat_id if settings else '' }}">
+                                </div>
+                                <div class="form-text text-muted">
+                                    To get your Chat ID: Start a chat with <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> on Telegram.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="discord_webhook" class="form-label">Discord Webhook URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fab fa-discord"></i></span>
+                                    <input type="text" class="form-control" id="discord_webhook" name="discord_webhook" value="{{ settings.discord_webhook if settings else '' }}">
+                                </div>
+                                <div class="form-text text-muted">
+                                    Discord webhook URL for receiving notifications in your server.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Integrations Tab -->
+                        <div class="tab-pane fade" id="integrations" role="tabpanel" aria-labelledby="integrations-tab">
+                            <div class="mb-3">
+                                <h5>TradingView Integration</h5>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="tradingview_webhook_enabled" name="tradingview_webhook_enabled" {% if settings and settings.tradingview_webhook_enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="tradingview_webhook_enabled">
+                                        Enable TradingView Webhook
+                                    </label>
+                                </div>
+                                
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">Webhook URL</span>
+                                    <input type="text" class="form-control" value="{{ url_for('tradingview_webhook', webhook_key=settings.webhook_key, _external=True) if settings and settings.webhook_key else 'Generate webhook key first' }}" id="webhookUrl" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" id="copyWebhookBtn" {% if not settings or not settings.webhook_key %}disabled{% endif %}>
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted mb-3">
+                                    Use this URL in your TradingView alerts to trigger automated trades.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h5>MT4/MT5 Integration</h5>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="mt4_mt5_enabled" name="mt4_mt5_enabled" {% if settings and settings.mt4_mt5_enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="mt4_mt5_enabled">
+                                        Enable MT4/MT5 Bridge
+                                    </label>
+                                </div>
+                                <div class="form-text text-muted">
+                                    Enable integration with MetaTrader 4 and 5 platforms.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h5>GitHub Integration</h5>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="auto_github_sync" name="auto_github_sync" {% if settings and settings.auto_github_sync %}checked{% endif %}>
+                                    <label class="form-check-label" for="auto_github_sync">
+                                        Enable GitHub Sync
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="github_token" class="form-label">GitHub Personal Access Token</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fab fa-github"></i></span>
+                                        <input type="password" class="form-control" id="github_token" name="github_token" value="{{ settings.github_token if settings else '' }}">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleGithubToken">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="github_repo" class="form-label">Repository Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-code-branch"></i></span>
+                                        <input type="text" class="form-control" id="github_repo" name="github_repo" value="{{ settings.github_repo if settings else '' }}" placeholder="username/repository">
+                                    </div>
+                                </div>
+                                <div class="form-text text-muted">
+                                    Sync your trading bot code and logs to GitHub for backup and version control.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 d-flex justify-content-between">
+                        <button type="reset" class="btn btn-secondary">Reset</button>
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle API Key visibility
+        document.getElementById('toggleApiKey').addEventListener('click', function() {
+            const apiKeyInput = document.getElementById('api_key');
+            const eyeIcon = this.querySelector('i');
+            
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                apiKeyInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+        
+        // Toggle Manual API Key visibility
+        document.getElementById('toggleManualApiKey').addEventListener('click', function() {
+            const apiKeyInput = document.getElementById('manual_api_key');
+            const eyeIcon = this.querySelector('i');
+            
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                apiKeyInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+        
+        // Toggle GitHub Token visibility
+        document.getElementById('toggleGithubToken').addEventListener('click', function() {
+            const tokenInput = document.getElementById('github_token');
+            const eyeIcon = this.querySelector('i');
+            
+            if (tokenInput.type === 'password') {
+                tokenInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                tokenInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+        
+        // Copy webhook URL
+        document.getElementById('copyWebhookBtn').addEventListener('click', function() {
+            const webhookUrl = document.getElementById('webhookUrl');
+            
+            webhookUrl.select();
+            webhookUrl.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(webhookUrl.value).then(() => {
+                // Show success message
+                this.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-copy"></i>';
+                }, 2000);
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
+            });
+        });
+    });
+</script>
+{% endblock %}
